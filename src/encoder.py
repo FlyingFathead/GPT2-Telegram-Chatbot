@@ -105,6 +105,20 @@ class Encoder:
         text = bytearray([self.byte_decoder[c] for c in text]).decode('utf-8', errors=self.errors)
         return text
 
+    def decode_colored(self, tokens):
+        text=''
+        i=36
+        for token in tokens:
+            q = self.decoder[token]
+            text += ("\033[%dm"%i) + q
+            i^=1  
+        text += "\033[0m"
+        text = text.replace('Ġ',' ')
+        text = text.replace('Ċ',"\n")
+        text = text.replace('Ã¤','ä')
+        text = text.replace('Ã¶','ö')
+        return text
+
 def get_encoder(model_name, models_dir):
     with open(os.path.join(models_dir, model_name, 'encoder.json'), 'r') as f:
         encoder = json.load(f)

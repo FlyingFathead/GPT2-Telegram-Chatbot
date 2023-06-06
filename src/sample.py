@@ -1,4 +1,4 @@
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 
 import model
 
@@ -23,24 +23,20 @@ def top_k_logits(logits, k):
 
 
 def top_p_logits(logits, p):
-    """Nucleus sampling"""
-    batch, _ = logits.shape.as_list()
-    sorted_logits = tf.sort(logits, direction='DESCENDING', axis=-1)
-    cumulative_probs = tf.cumsum(tf.nn.softmax(sorted_logits, axis=-1), axis=-1)
-    indices = tf.stack([
-        tf.range(0, batch),
-        # number of indices to include
-        tf.maximum(tf.reduce_sum(tf.cast(cumulative_probs <= p, tf.int32), axis=-1) - 1, 0),
-    ], axis=-1)
-    min_values = tf.gather_nd(sorted_logits, indices)
-    return tf.where(
-        logits < min_values,
-        tf.ones_like(logits) * -1e10,
-        logits,
-    )
+    with tf.variable_scope('top_p_logits'):
+        logits_sort = tf.sort(logits, direction='DESCENDING')
+        probs_sort = tf.nn.softmax(logits_sort)
+        probs_sums = tf.cumsum(probs_sort, axis=1, exclusive=True)
+        logits_masked = tf.where(probs_sums < p, logits_sort, tf.ones_like(logits_sort)*1000) # [batchsize, vocab]
+        min_logits = tf.reduce_min(logits_masked, axis=1, keepdims=True) # [batchsize, 1]
+        return tf.where(
+            logits < min_logits,
+            tf.ones_like(logits, dtype=logits.dtype) * -1e10,
+            logits,
+        )
 
 
-def sample_sequence(*, hparams, length, start_token=None, batch_size=None, context=None, temperature=1, top_k=0, top_p=1):
+def sample_sequence(*, hparams, length, start_token=None, batch_size=None, context=None, temperature=1, top_k=0, top_p=0.0):
     if start_token is None:
         assert context is not None, 'Specify exactly one of start_token and context!'
     else:
@@ -62,8 +58,10 @@ def sample_sequence(*, hparams, length, start_token=None, batch_size=None, conte
         def body(past, prev, output):
             next_outputs = step(hparams, prev, past=past)
             logits = next_outputs['logits'][:, -1, :]  / tf.to_float(temperature)
-            logits = top_k_logits(logits, k=top_k)
-            logits = top_p_logits(logits, p=top_p)
+            if top_p > 0.0:
+                logits = top_p_logits(logits, p=top_p)
+            else:
+                logits = top_k_logits(logits, k=top_k)
             samples = tf.multinomial(logits, num_samples=1, output_dtype=tf.int32)
             return [
                 next_outputs['presents'] if past is None else tf.concat([past, next_outputs['presents']], axis=-2),
