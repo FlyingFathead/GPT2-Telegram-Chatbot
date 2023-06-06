@@ -1,11 +1,21 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+
 from telegram.ext import Updater, CommandHandler, MessageHandler, Filters
 import json, os, string, sys, threading, random, model, sample, encoder, logging, time
 import numpy as np
 import tensorflow as tf
 import re
 import os
+
+# Check if the token file exists
+if not os.path.isfile('token.txt'):
+    print("Error: token.txt file doesn't exist. Please create the file and add your token.")
+    exit()
+
+# Read the bot_token from the file
+with open('token.txt', 'r') as file:
+    bot_token = file.read().strip()
 
 # Enable console logging
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
@@ -15,14 +25,14 @@ logger = logging.getLogger(__name__)
 # Console output debug prints
 debug = True
 
-# Session timeout
-timeout = 1500
+# Session timeout in seconds
+timeout = 220
 
 # top_p (refer to gpt-2 documentation)
-top = 0.66
+top = 0.77
 
 # Temperature (refer to gpt-2 documentation)
-degree = 1
+degree = 1.0
 
 # Top_p multiplier - add to top_p per word 
 # 0.00375‬ - may be shorter
@@ -31,7 +41,7 @@ degree = 1
 # 0.00450
 # 0.00475
 # 0.00500 - may be longer
-mx = 0.00375
+mx = 0.00500
 
 # Top_K unused here, might be useful eventually.
 tok = 0
@@ -48,6 +58,20 @@ running = False
 temps = str(degree)
 tpstring = str(top)
 
+# tekstit
+txt_settings_prefix = "[Asetukset/logiikka: "
+# 'Just type a message... It could be lagged out. /chatbot goes into Me: You: mode. /finish just finishes the text /learnon for conversation learning mode.'
+txt_info_1 = "Kirjoita viestisi."
+txt_info_bot_busy = "Botti on tällä hetkellä työn touhussa! Tässä pitää vielä odotella..! "
+txt_info_timer_out = "Laskuri on mennyt nollaan. Botti on käynnistetty uudelleen."
+txt_info_mode_one = ' GPT-XYZ] Olen nyt oppivassa tsättitilassa. Kirjoita (tai klikkaa) /reset nollataksesi botin! Botti tarvitsee resetin n.2 min välein.\n\nPuhu minulle!'
+txt_info_mode_two = ' GPT-XYZ] Olen nyt ei-oppivassa tsättibottitilassa.\n\nPuhu mulle...'
+txt_info_mode_three = 'Olen nyt lauseentäydennystilassa.\n\nPuhu mulle...'
+txt_info_temp = " lämpötila: "
+txt_info_secs_remaining = " sekuntia jäljellä..."
+txt_info_reset_msg = 'Aikalaskuri on nollassa. Jos haluat aloittaa uuden istunnon, kirjoita tai klikkaa: /reset'
+
+temp = ""
 # Define a few command handlers. These usually take the two arguments bot and
 # update. Error handlers also receive the raised TelegramError object in error.
 
@@ -67,11 +91,11 @@ def start(bot, update):
         learning = ""
         cache = ""
         if mode == True and learn == True:
-            update.message.reply_text('Send a message! Get it computed! 1558M Settings: Logic: ' + tpstring + ' Rate:' + temps + ' GPT-2 1558M. I am in the learning chatbot mode.')
+            update.message.reply_text(txt_settings_prefix + tpstring + txt_info_temp + temps + txt_info_mode_one)
         if mode == True and learn == False:
-            update.message.reply_text('Send a message! Get it computed! 1558M Settings: Logic: ' + tpstring + ' Rate:' + temps + ' GPT-2 1558M I am in the chatbot mode.')
+            update.message.reply_text(txt_settings_prefix + tpstring + txt_info_temp + temps + txt_info_mode_two)
         if mode == False:
-            update.message.reply_text('Send a message! Get it computed! 1558M Settings: Logic: ' + tpstring + ' Rate:' + temps + ' GPT-2 1558M I am in the finishsentence mode.')
+            update.message.reply_text(txt_settings_prefix + tpstring + txt_info_temp + temps + txt_info_mode_three)
         return
     if user == update.message.from_user.id:
         mode = True
@@ -79,19 +103,19 @@ def start(bot, update):
         learning = ""
         cache = ""
         if mode == True and learn == True:
-            update.message.reply_text('Send a message! Get it computed! 1558M Settings: Logic: ' + tpstring + ' Rate:' + temps + ' GPT-2 1558M. I am in the learning chatbot mode.')
+            update.message.reply_text(txt_settings_prefix + tpstring + txt_info_temp + temps + txt_info_mode_one)
         if mode == True and learn == False:
-            update.message.reply_text('Send a message! Get it computed! 1558M Settings: Logic: ' + tpstring + ' Rate:' + temps + ' GPT-2 1558M I am in the chatbot mode.')
+            update.message.reply_text(txt_settings_prefix + tpstring + txt_info_temp + temps + txt_info_mode_two)
         if mode == False:
-            update.message.reply_text('Send a message! Get it computed! 1558M Settings: Logic: ' + tpstring + ' Rate:' + temps + ' GPT-2 1558M I am in the finishsentence mode.')
+            update.message.reply_text(txt_settings_prefix + tpstring + txt_info_temp + temps + txt_info_mode_three)
         return
     else:
-        left = str(tim)
-        update.message.reply_text('Bot is currently in use, make sure to set your settings when their timer runs down. ' + left + ' seconds.')
+        left = str(timeout)
+        update.message.reply_text(txt_info_bot_busy + left + txt_info_secs_remaining)
 
 def help(bot, update):
     """Send a message when the command /help is issued."""
-    update.message.reply_text('Just type a message... It could be lagged out. /chatbot goes into Me: You: mode. /finish just finishes the text /learnon for conversation learning mode.')
+    update.message.reply_text('Kirjoita vaan viestis. /reset tyhjentää koko höskän.')
 
 def chatbot(bot, update):
     """Send a message when the command /chatbot is issued."""
@@ -109,11 +133,11 @@ def chatbot(bot, update):
         learning = ""
         cache = ""
         if mode == True and learn == True:
-            update.message.reply_text('Send a message! Get it computed! 1558M Settings: Logic: ' + tpstring + ' Rate:' + temps + ' GPT-2 1558M. I am in the learning chatbot mode.')
+            update.message.reply_text(txt_settings_prefix + tpstring + txt_info_temp + temps + txt_info_mode_one)
         if mode == True and learn == False:
-            update.message.reply_text('Send a message! Get it computed! 1558M Settings: Logic: ' + tpstring + ' Rate:' + temps + ' GPT-2 1558M I am in the chatbot mode.')
+            update.message.reply_text(txt_settings_prefix + tpstring + txt_info_temp + temps + txt_info_mode_two)
         if mode == False:
-            update.message.reply_text('Send a message! Get it computed! 1558M Settings: Logic: ' + tpstring + ' Rate:' + temps + ' GPT-2 1558M I am in the finishsentence mode.')
+            update.message.reply_text(txt_settings_prefix + tpstring + txt_info_temp + temps + txt_info_mode_three)
         return
     if user == update.message.from_user.id:
         mode = True
@@ -121,15 +145,15 @@ def chatbot(bot, update):
         learning = ""
         cache = ""
         if mode == True and learn == True:
-            update.message.reply_text('Send a message! Get it computed! 1558M Settings: Logic: ' + tpstring + ' Rate:' + temps + ' GPT-2 1558M. I am in the learning chatbot mode.')
+            update.message.reply_text(txt_settings_prefix + tpstring + txt_info_temp + temps + txt_info_mode_one)
         if mode == True and learn == False:
-            update.message.reply_text('Send a message! Get it computed! 1558M Settings: Logic: ' + tpstring + ' Rate:' + temps + ' GPT-2 1558M I am in the chatbot mode.')
+            update.message.reply_text(txt_settings_prefix + tpstring + txt_info_temp + temps + txt_info_mode_two)
         if mode == False:
-            update.message.reply_text('Send a message! Get it computed! 1558M Settings: Logic: ' + tpstring + ' Rate:' + temps + ' GPT-2 1558M I am in the finishsentence mode.')
+            update.message.reply_text(txt_settings_prefix + tpstring + txt_info_temp + temps + txt_info_mode_three)
         return
     else:
-        left = str(tim)
-        update.message.reply_text('Bot is currently in use, make sure to set your settings when their timer runs down. ' + left + ' seconds.')
+        left = str(timeout)
+        update.message.reply_text(txt_info_bot_busy + left + txt_info_secs_remaining)
 
 def finish(bot, update):
     """Send a message when the command /finish is issued."""
@@ -147,11 +171,11 @@ def finish(bot, update):
         learning = ""
         cache = ""
         if mode == True and learn == True:
-            update.message.reply_text('Send a message! Get it computed! 1558M Settings: Logic: ' + tpstring + ' Rate:' + temps + ' GPT-2 1558M. I am in the learning chatbot mode.')
+            update.message.reply_text(txt_settings_prefix + tpstring + txt_info_temp + temps + txt_info_mode_one)
         if mode == True and learn == False:
-            update.message.reply_text('Send a message! Get it computed! 1558M Settings: Logic: ' + tpstring + ' Rate:' + temps + ' GPT-2 1558M I am in the chatbot mode.')
+            update.message.reply_text(txt_settings_prefix + tpstring + txt_info_temp + temps + txt_info_mode_two)
         if mode == False:
-            update.message.reply_text('Send a message! Get it computed! 1558M Settings: Logic: ' + tpstring + ' Rate:' + temps + ' GPT-2 1558M I am in the finishsentence mode.')
+            update.message.reply_text(txt_settings_prefix + tpstring + txt_info_temp + temps + txt_info_mode_three)
         return
     if user == update.message.from_user.id:
         mode = False
@@ -159,15 +183,15 @@ def finish(bot, update):
         learning = ""
         cache = ""
         if mode == True and learn == True:
-            update.message.reply_text('Send a message! Get it computed! 1558M Settings: Logic: ' + tpstring + ' Rate:' + temps + ' GPT-2 1558M. I am in the learning chatbot mode.')
+            update.message.reply_text(txt_settings_prefix + tpstring + txt_info_temp + temps + txt_info_mode_one)
         if mode == True and learn == False:
-            update.message.reply_text('Send a message! Get it computed! 1558M Settings: Logic: ' + tpstring + ' Rate:' + temps + ' GPT-2 1558M I am in the chatbot mode.')
+            update.message.reply_text(txt_settings_prefix + tpstring + txt_info_temp + temps + txt_info_mode_two)
         if mode == False:
-            update.message.reply_text('Send a message! Get it computed! 1558M Settings: Logic: ' + tpstring + ' Rate:' + temps + ' GPT-2 1558M I am in the finishsentence mode.')
+            update.message.reply_text(txt_settings_prefix + tpstring + txt_info_temp + temps + txt_info_mode_three)
         return
     else:
-        left = str(tim)
-        update.message.reply_text('Bot is currently in use, make sure to set your settings when their timer runs down. ' + left + ' seconds.')
+        left = str(timeout)
+        update.message.reply_text(txt_info_bot_busy + left + txt_info_secs_remaining)
 
 def learnon(bot, update):
     """Send a message when the command /learnon is issued."""
@@ -185,11 +209,11 @@ def learnon(bot, update):
         learning = ""
         cache = ""
         if mode == True and learn == True:
-            update.message.reply_text('Send a message! Get it computed! 1558M Settings: Logic: ' + tpstring + ' Rate:' + temps + ' GPT-2 1558M. I am in the learning chatbot mode.')
+            update.message.reply_text(txt_settings_prefix + tpstring + txt_info_temp + temps + txt_info_mode_one)
         if mode == True and learn == False:
-            update.message.reply_text('Send a message! Get it computed! 1558M Settings: Logic: ' + tpstring + ' Rate:' + temps + ' GPT-2 1558M I am in the chatbot mode.')
+            update.message.reply_text(txt_settings_prefix + tpstring + txt_info_temp + temps + txt_info_mode_two)
         if mode == False:
-            update.message.reply_text('Send a message! Get it computed! 1558M Settings: Logic: ' + tpstring + ' Rate:' + temps + ' GPT-2 1558M I am in the finishsentence mode.')
+            update.message.reply_text(txt_settings_prefix + tpstring + txt_info_temp + temps + txt_info_mode_three)
         return
     if user == update.message.from_user.id:
         mode = True
@@ -197,15 +221,15 @@ def learnon(bot, update):
         learning = ""
         cache = ""
         if mode == True and learn == True:
-            update.message.reply_text('Send a message! Get it computed! 1558M Settings: Logic: ' + tpstring + ' Rate:' + temps + ' GPT-2 1558M. I am in the learning chatbot mode.')
+            update.message.reply_text(txt_settings_prefix + tpstring + txt_info_temp + temps + txt_info_mode_one)
         if mode == True and learn == False:
-            update.message.reply_text('Send a message! Get it computed! 1558M Settings: Logic: ' + tpstring + ' Rate:' + temps + ' GPT-2 1558M I am in the chatbot mode.')
+            update.message.reply_text(txt_settings_prefix + tpstring + txt_info_temp + temps + txt_info_mode_two)
         if mode == False:
-            update.message.reply_text('Send a message! Get it computed! 1558M Settings: Logic: ' + tpstring + ' Rate:' + temps + ' GPT-2 1558M I am in the finishsentence mode.')
+            update.message.reply_text(txt_settings_prefix + tpstring + txt_info_temp + temps + txt_info_mode_three)
         return
     else:
-        left = str(tim)
-        update.message.reply_text('Bot is currently in use, make sure to set your settings when their timer runs down. ' + left + ' seconds.')
+        left = str(timeout)
+        update.message.reply_text(txt_info_bot_busy + left + txt_info_secs_remaining)
 
 def learnoff(bot, update):
     """Send a message when the command /learnoff is issued."""
@@ -223,11 +247,11 @@ def learnoff(bot, update):
         learning = ""
         cache = ""
         if mode == True and learn == True:
-            update.message.reply_text('Send a message! Get it computed! 1558M Settings: Logic: ' + tpstring + ' Rate:' + temps + ' GPT-2 1558M. I am in the learning chatbot mode.')
+            update.message.reply_text(txt_settings_prefix + tpstring + txt_info_temp + temps + txt_info_mode_one)
         if mode == True and learn == False:
-            update.message.reply_text('Send a message! Get it computed! 1558M Settings: Logic: ' + tpstring + ' Rate:' + temps + ' GPT-2 1558M I am in the chatbot mode.')
+            update.message.reply_text(txt_settings_prefix + tpstring + txt_info_temp + temps + txt_info_mode_two)
         if mode == False:
-            update.message.reply_text('Send a message! Get it computed! 1558M Settings: Logic: ' + tpstring + ' Rate:' + temps + ' GPT-2 1558M I am in the finishsentence mode.')
+            update.message.reply_text(txt_settings_prefix + tpstring + txt_info_temp + temps + txt_info_mode_three)
         return
     if user == update.message.from_user.id:
         mode = True
@@ -235,15 +259,15 @@ def learnoff(bot, update):
         learning = ""
         cache = ""
         if mode == True and learn == True:
-            update.message.reply_text('Send a message! Get it computed! 1558M Settings: Logic: ' + tpstring + ' Rate:' + temps + ' GPT-2 1558M. I am in the learning chatbot mode.')
+            update.message.reply_text(txt_settings_prefix + tpstring + txt_info_temp + temps + txt_info_mode_one)
         if mode == True and learn == False:
-            update.message.reply_text('Send a message! Get it computed! 1558M Settings: Logic: ' + tpstring + ' Rate:' + temps + ' GPT-2 1558M I am in the chatbot mode.')
+            update.message.reply_text(txt_settings_prefix + tpstring + txt_info_temp + temps + txt_info_mode_two)
         if mode == False:
-            update.message.reply_text('Send a message! Get it computed! 1558M Settings: Logic: ' + tpstring + ' Rate:' + temps + ' GPT-2 1558M I am in the finishsentence mode.')
+            update.message.reply_text(txt_settings_prefix + tpstring + txt_info_temp + temps + txt_info_mode_three)
         return
     else:
-        left = str(tim)
-        update.message.reply_text('Bot is currently in use, make sure to set your settings when their timer runs down. ' + left + ' seconds.')
+        left = str(timeout)
+        update.message.reply_text(txt_info_bot_busy + left + txt_info_secs_remaining)
 
 def learnreset(bot, update):
     """Send a message when the command /learnreset is issued."""
@@ -261,11 +285,11 @@ def learnreset(bot, update):
         learning = ""
         cache = ""
         if mode == True and learn == True:
-            update.message.reply_text('Send a message! Get it computed! 1558M Settings: Logic: ' + tpstring + ' Rate:' + temps + ' GPT-2 1558M. I am in the learning chatbot mode.')
+            update.message.reply_text(txt_settings_prefix + tpstring + txt_info_temp + temps + txt_info_mode_one)
         if mode == True and learn == False:
-            update.message.reply_text('Send a message! Get it computed! 1558M Settings: Logic: ' + tpstring + ' Rate:' + temps + ' GPT-2 1558M I am in the chatbot mode.')
+            update.message.reply_text(txt_settings_prefix + tpstring + txt_info_temp + temps + txt_info_mode_two)
         if mode == False:
-            update.message.reply_text('Send a message! Get it computed! 1558M Settings: Logic: ' + tpstring + ' Rate:' + temps + ' GPT-2 1558M I am in the finishsentence mode.')
+            update.message.reply_text(txt_settings_prefix + tpstring + txt_info_temp + temps + txt_info_mode_three)
         return
     if user == update.message.from_user.id:
         mode = True
@@ -273,27 +297,27 @@ def learnreset(bot, update):
         learning = ""
         cache = ""
         if mode == True and learn == True:
-            update.message.reply_text('Send a message! Get it computed! 1558M Settings: Logic: ' + tpstring + ' Rate:' + temps + ' GPT-2 1558M. I am in the learning chatbot mode.')
+            update.message.reply_text(txt_settings_prefix + tpstring + txt_info_temp + temps + txt_info_mode_one)
         if mode == True and learn == False:
-            update.message.reply_text('Send a message! Get it computed! 1558M Settings: Logic: ' + tpstring + ' Rate:' + temps + ' GPT-2 1558M I am in the chatbot mode.')
+            update.message.reply_text(txt_settings_prefix + tpstring + txt_info_temp + temps + txt_info_mode_two)
         if mode == False:
-            update.message.reply_text('Send a message! Get it computed! 1558M Settings: Logic: ' + tpstring + ' Rate:' + temps + ' GPT-2 1558M I am in the finishsentence mode.')
+            update.message.reply_text(txt_settings_prefix + tpstring + txt_info_temp + temps + txt_info_mode_three)
         return
     else:
-        left = str(tim)
-        update.message.reply_text('Bot is currently in use, make sure to set your settings when their timer runs down. ' + left + ' seconds.')
+        left = str(timeout)
+        update.message.reply_text(txt_info_bot_busy + left + txt_info_secs_remaining)
 
 def regex(mew):
     meow = mew
-    if "You:" in meow:
-        meow = meow[0:meow.find('You:')]
-        if "Me:" in meow:
-            meow = meow[0:meow.find('Me:')]
+    if "|vastaus|" in meow:
+        meow = meow[0:meow.find('|vastaus|')]
+        if "|kysymys|" in meow:
+            meow = meow[0:meow.find('|kysymys|')]
         return meow
-    if "Me:" in meow:
-        meow = meow[0:meow.find('Me:')]
-        if "You:" in meow:
-            meow = meow[0:meow.find('You:')]
+    if "|kysymys|" in meow:
+        meow = meow[0:meow.find('|kysymys|')]
+        if "|vastaus|" in meow:
+            meow = meow[0:meow.find('|vastaus|')]
         return meow
     if "?" in meow:
         meow = meow[0:meow.find('?')]
@@ -307,9 +331,8 @@ def regex(mew):
         meow = meow.rsplit('.', 1)[0]
         meow = meow + "."
         return meow
-    meow = "Error."
+    meow = "Nyt tapahtui joku virhe."
     return meow
-
 
 def retry(bot, update):
     retr = True
@@ -349,14 +372,14 @@ def wait(bot, update, new):
                 learning = ""
                 cache = ""
                 user = ""
-                update.message.reply_text('Timer has run down, bot has been reset into the default mode.')
+                update.message.reply_text(txt_info_reset_msg)
                 running = False
     else:
-        left = str(temp)
-        update.message.reply_text('Bot is in use, current cooldown is: ' + left + ' seconds.')
+        left = str(60)
+        update.message.reply_text(txt_info_bot_busy + left + ' sekuntia.')
 
 def interact_model(bot, update, new):
-    model_name = '1558M'
+    model_name = 'fenno'
     seed = random.randint(1431655765, 2863311530)
     nsamples = 1
     batch_size = 1
@@ -373,10 +396,10 @@ def interact_model(bot, update, new):
     if mode == True:
         tlen = len(tex.split())
         if tlen > 300:
-            update.message.reply_text('Input text is too long.')
+            update.message.reply_text('Annettu teksti on liian pitkä.')
             return
         if new == True and cache:
-            m = re.search('.* You: ', cache)
+            m = re.search('.* |kysymys|', cache)
             raw_text = m.group(0)
             tlensp = len(raw_text.split())
             tlen = tlensp - 2   
@@ -390,44 +413,52 @@ def interact_model(bot, update, new):
             if tlen > 50:
                 length = 60
             if debug == True:
-                print("Cache is...")
+                print("Välimuistissa...")
                 print(raw_text)
+        
+        if new == True:        
+            texm = '|kysymys|' + tex + '\n'
+        
         if new != True:
-            texm = 'Me: ' + tex
-            initial = texm + ' You: '
+            texm = '\n' + '|kysymys|' + tex + '\n'            
+            initial = texm + '|vastaus|'
             raw_text = learning + initial
             length = tlen
-            if tlen < 20:
-                length = 20
-            if tlen > 20:
-                length = 20
-            if tlen > 30:
-               length =  40
-            if tlen > 50:
-                length = 60
+            # if tlen < 20:
+                # length = 20
+            # if tlen > 20:
+                # length = 20
+            # if tlen > 30:
+               # length =  40
+            # if tlen > 50:
+                # length = 60
+
+            length = 300
             cache = raw_text
         maxls = len(raw_text.split())
         if maxls > 300:
             while maxls > 300:
                 if debug == True:
-                    print("Reducing memory of chat.")
-                raw_text = raw_text.split(' Me:', 1)[-1]
-                raw_text = "Me:" + raw_text
+                    print("Vähennetään keskustelumuistia..")
+                raw_text = raw_text.split(' |kysymys|', 1)[-1]
+                raw_text = "|kysymys|" + raw_text
                 maxls = len(raw_text.split())
                 if maxls > 300:
                     if debug == True:
-                        print("Reducing memory of chat.")
-                    raw_text = raw_text.split('You:', 1)[-1]
-                    raw_text = "You:" + raw_text
+                        print("Vähennetään keskustelumuistia.")
+                    raw_text = raw_text.split('|kysymys|', 1)[-1]
+                    raw_text = "|vastaus|" + raw_text
                     maxls = len(raw_text.split())
             if debug == True:
-                print("FINAL MEMORY REDUCTION:")
+                print("LOPULLINEN MUISTINVÄHENNYS:")
                 print(raw_text)
     if mode == False:
-        tlen = len(penguin.split())
+#penguin
+        raw_text = "|kysymys|"
+        tlen = len(raw_text.split())
         length = tlen
         if length > 300:
-            update.message.reply_text('Input text is too long.')
+            update.message.reply_text('Syötetty teksti on liian pitkä.')
             return
         if new != True:
             cache = tex
@@ -437,7 +468,7 @@ def interact_model(bot, update, new):
             tlen = length
             if debug == True:
                 print("Cache is...")
-                print(penguin)
+                print(raw_text)
         raw_text = tex
     toppf = float(topp)
     lengthm = float(tlen)
@@ -447,10 +478,10 @@ def interact_model(bot, update, new):
     # The max here is 0.84 and minimum 0.005
     if top_p > 0.84:
         top_p = 0.84
-    if top_p < 0.005:
-        top_p = 0.005
+    if top_p < 0.010:  #original 0.005
+        top_p = 0.010   #original 0.005
 #############################################
-    update.message.reply_text('Computing...')
+#    update.message.reply_text('Computing...')
     models_dir = os.path.expanduser(os.path.expandvars(models_dir))
     if batch_size is None:
         batch_size = 1
@@ -463,17 +494,17 @@ def interact_model(bot, update, new):
         length = hparams.n_ctx // 2
     elif length > hparams.n_ctx:
         raise ValueError("Can't get samples longer than window size: %s" % hparams.n_ctx)
-    with tf.Session(graph=tf.Graph()) as sess:
-        context = tf.placeholder(tf.int32, [batch_size, None])
+    with tf.compat.v1.Session(graph=tf.Graph()) as sess:
+        context = tf.compat.v1.placeholder(tf.int32, [batch_size, None])
         np.random.seed(seed)
-        tf.set_random_seed(seed)
+        tf.compat.v1.set_random_seed(seed)
         output = sample.sample_sequence(
             hparams=hparams, length=length,
             context=context,
             batch_size=batch_size,
             temperature=degree, top_k=top_k, top_p=top_p
         )
-        saver = tf.train.Saver()
+        saver = tf.compat.v1.train.Saver()
         ckpt = tf.train.latest_checkpoint(os.path.join(models_dir, model_name))
         saver.restore(sess, ckpt)
         context_tokens = enc.encode(raw_text)
@@ -500,10 +531,9 @@ def interact_model(bot, update, new):
                 if mode == True:
                     # Final regex
                     sanitized = regex(final)
-                    finalsan = " ".join(re.split("[^a-zA-Z.,?!'*]+", sanitized))
-
-                else:
                     finalsan = final
+                else:
+                    finalsan = final                
                 if learn == True:
                     learning = raw_text + finalsan + " "
                 update.message.reply_text(finalsan)
@@ -540,18 +570,33 @@ def main():
     # Create the Updater and pass it your bot's token.
     # Make sure to set use_context=True to use the new context based callbacks
     # Post version 12 this will no longer be necessary
-    updater = Updater("BOTKEY", use_context=False)
+
+    # update; use in TG api v12 => updater = Updater('TOKEN', use_context=True)
+    updater = Updater(bot_token, use_context=False)
     # Get the dispatcher to register handlers
     dp = updater.dispatcher
     # on different commands - answer in Telegram
+
+# alkuperäiset komennot // original commands
     dp.add_handler(CommandHandler("start", start))
     dp.add_handler(CommandHandler("help", help))
     dp.add_handler(CommandHandler("chatbot", chatbot))
     dp.add_handler(CommandHandler("finish", finish))
-    dp.add_handler(CommandHandler("learnon", learnon))
-    dp.add_handler(CommandHandler("learnoff", learnoff))
+    dp.add_handler(CommandHandler("learnon", learnon))  
+    dp.add_handler(CommandHandler("learnoff", learnoff))    
     dp.add_handler(CommandHandler("learnreset", learnreset))
+    dp.add_handler(CommandHandler("reset", learnreset))    
     dp.add_handler(CommandHandler("retry", retry))
+
+# suomi-komennot /// Finnish commands
+    dp.add_handler(CommandHandler("aloita", start))    
+    dp.add_handler(CommandHandler("apua", help))
+    dp.add_handler(CommandHandler("lopeta", finish))
+    dp.add_handler(CommandHandler("opi", learnon))  
+    dp.add_handler(CommandHandler("eioppia", learnoff))    
+    dp.add_handler(CommandHandler("nollaa", learnreset))
+    dp.add_handler(CommandHandler("uusiks", retry))
+
     # on noncommand i.e message - echo the message on Telegram
     dp.add_handler(MessageHandler(Filters.text, runn))
     # log all errors
