@@ -1,3 +1,22 @@
+## About this fork
+
+This is a fork from the original GPT-2 Telegram Chatbot from xwarfare (https://github.com/xwarfare/GPT2-Telegram-Chatbot). It's been modified to suit a Finnish GPT-2 model and uses updated code for the Telegram API handling and so forth. 
+
+Put your API token in the `src` directory under `token.txt`.
+You will also likely need to customize the chat prefix, the chat suffix and other elements of the chat handling yourself.
+
+It still has its flaws:
+
+- user needs to manually reset with `/reset` if the chat context memory is filled up
+- you can only have one user session at a time; hence the time limit per session
+- occasionally gets stuck when context memory is overloaded => when trimming context memory (**this needs to be reworked!**)
+
+Overall, this is mainly suitable for testbed purposes and not for production use, so to speak. Then again, when running just right, you can use it to audit your local model (i.e. during model training).
+
+---
+_(original README.md below)_
+---
+
 ## GPT2-Telegram-Chatbot
 
 A GPT-2 Telegram chatbot that's been relatively tuned for chatting. Feel free to make me PRs and I'll check out your code! The bot isn't 100% accurate all the time (why I coded in a /retry function.)
