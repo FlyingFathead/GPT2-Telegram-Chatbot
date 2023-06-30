@@ -9,12 +9,12 @@ import re
 import os
 
 # Check if the token file exists
-if not os.path.isfile('token.txt'):
+if not os.path.isfile('bot_token.txt'):
     print("Error: token.txt file doesn't exist. Please create the file and add your token.")
     exit()
 
 # Read the bot_token from the file
-with open('token.txt', 'r') as file:
+with open('bot_token.txt', 'r') as file:
     bot_token = file.read().strip()
 
 # Enable console logging
@@ -35,7 +35,7 @@ top = 0.77
 degree = 1.0
 
 # Top_p multiplier - add to top_p per word 
-# 0.00375‬ - may be shorter
+# 0.00375 - may be shorter
 # 0.00400
 # 0.00425
 # 0.00450
