@@ -26,7 +26,7 @@ logger = logging.getLogger(__name__)
 debug = True
 
 # Session timeout in seconds
-timeout = 220
+timeout = 2000
 
 # top_p (refer to gpt-2 documentation)
 top = 0.77
@@ -57,6 +57,10 @@ cache = ""
 running = False
 temps = str(degree)
 tpstring = str(top)
+
+# turns
+global turns
+turns = []
 
 # tekstit
 txt_settings_prefix = "[Asetukset/logiikka: "
@@ -378,6 +382,20 @@ def wait(bot, update, new):
         left = str(60)
         update.message.reply_text(txt_info_bot_busy + left + ' sekuntia.')
 
+# helper to fit to 1024 token size
+def reduce_to_fit(tokens, max_tokens, enc):
+    if len(tokens) <= max_tokens:
+        return tokens
+
+    while len(tokens) > max_tokens:
+        try:
+            second_question_index = tokens.index(enc.encode('|kysymys|')[0], len(enc.encode('|kysymys|')))
+        except ValueError:
+            print("Cannot reduce the text further!")
+            break
+        tokens = tokens[second_question_index:]
+    return tokens
+
 def interact_model(bot, update, new):
     model_name = 'fenno'
     seed = random.randint(1431655765, 2863311530)
@@ -391,102 +409,49 @@ def interact_model(bot, update, new):
     global learn
     global mode
     global cache
-#############################################
-    # This does some basic length processing.
-    if mode == True:
-        tlen = len(tex.split())
-        if tlen > 300:
-            update.message.reply_text('Annettu teksti on liian pitkä.')
-            return
-        if new == True and cache:
-            m = re.search('.* |kysymys|', cache)
-            raw_text = m.group(0)
-            tlensp = len(raw_text.split())
-            tlen = tlensp - 2   
-            length = tlen
-            if tlen < 20:
-                length = 20
-            if tlen > 20:
-                length = 20
-            if tlen > 30:
-               length =  40
-            if tlen > 50:
-                length = 60
-            if debug == True:
-                print("Välimuistissa...")
-                print(raw_text)
-        
-        if new == True:        
-            texm = '|kysymys|' + tex + '\n'
-        
-        if new != True:
-            texm = '\n' + '|kysymys|' + tex + '\n'            
-            initial = texm + '|vastaus|'
-            raw_text = learning + initial
-            length = tlen
-            # if tlen < 20:
-                # length = 20
-            # if tlen > 20:
-                # length = 20
-            # if tlen > 30:
-               # length =  40
-            # if tlen > 50:
-                # length = 60
+    global turns  # Keep track of conversation turns
 
-            length = 300
-            cache = raw_text
-        maxls = len(raw_text.split())
-        if maxls > 300:
-            while maxls > 300:
-                if debug == True:
-                    print("Vähennetään keskustelumuistia..")
-                raw_text = raw_text.split(' |kysymys|', 1)[-1]
-                raw_text = "|kysymys|" + raw_text
-                maxls = len(raw_text.split())
-                if maxls > 300:
-                    if debug == True:
-                        print("Vähennetään keskustelumuistia.")
-                    raw_text = raw_text.split('|kysymys|', 1)[-1]
-                    raw_text = "|vastaus|" + raw_text
-                    maxls = len(raw_text.split())
-            if debug == True:
-                print("LOPULLINEN MUISTINVÄHENNYS:")
-                print(raw_text)
-    if mode == False:
-#penguin
-        raw_text = "|kysymys|"
-        tlen = len(raw_text.split())
-        length = tlen
-        if length > 300:
-            update.message.reply_text('Syötetty teksti on liian pitkä.')
-            return
-        if new != True:
-            cache = tex
-        if new == True and cache:
-            tex = cache
-            length = len(tex.split())
-            tlen = length
-            if debug == True:
-                print("Cache is...")
-                print(raw_text)
-        raw_text = tex
+    enc = encoder.get_encoder(model_name, models_dir)
+
+    if mode == True:
+        if new:  # If this is a new conversation, reset the list of turns
+            turns = []
+
+        # Check total token count of the history plus the new user input
+        potential_context = ''.join(turns) + '|kysymys|' + tex + '\n|vastaus|'
+        total_tokens = len(enc.encode(potential_context))
+
+        # If too many tokens, remove turns from the start
+        while total_tokens > 800:
+            if len(turns) == 1:
+                print("Cannot reduce the text further!")
+                return
+            turns.pop(0)
+            potential_context = ''.join(turns) + '|kysymys|' + tex + '\n|vastaus|'
+            total_tokens = len(enc.encode(potential_context))
+
+        # Add the user's input to the context after it's guaranteed to fit
+        turns.append('|kysymys|' + tex + '\n|vastaus|')
+        raw_text = potential_context
+        context_tokens = enc.encode(raw_text)
+        length = 300  # Set the default length
+
     toppf = float(topp)
-    lengthm = float(tlen)
+    lengthm = float(len(enc.encode(raw_text)))
     multf = float(mx)
     lxm = float(lengthm * multf)
     top_p = lxm + toppf
+
     # The max here is 0.84 and minimum 0.005
     if top_p > 0.84:
         top_p = 0.84
-    if top_p < 0.010:  #original 0.005
-        top_p = 0.010   #original 0.005
-#############################################
-#    update.message.reply_text('Computing...')
+    if top_p < 0.010:
+        top_p = 0.010
+
     models_dir = os.path.expanduser(os.path.expandvars(models_dir))
     if batch_size is None:
         batch_size = 1
     assert nsamples % batch_size == 0
-    enc = encoder.get_encoder(model_name, models_dir)
     hparams = model.default_hparams()
     with open(os.path.join(models_dir, model_name, 'hparams.json')) as f:
         hparams.override_from_dict(json.load(f))
@@ -494,6 +459,7 @@ def interact_model(bot, update, new):
         length = hparams.n_ctx // 2
     elif length > hparams.n_ctx:
         raise ValueError("Can't get samples longer than window size: %s" % hparams.n_ctx)
+
     with tf.compat.v1.Session(graph=tf.Graph()) as sess:
         context = tf.compat.v1.placeholder(tf.int32, [batch_size, None])
         np.random.seed(seed)
@@ -504,61 +470,55 @@ def interact_model(bot, update, new):
             batch_size=batch_size,
             temperature=degree, top_k=top_k, top_p=top_p
         )
+
         saver = tf.compat.v1.train.Saver()
         ckpt = tf.train.latest_checkpoint(os.path.join(models_dir, model_name))
         saver.restore(sess, ckpt)
-        context_tokens = enc.encode(raw_text)
+
         generated = 0
-        for _ in range(nsamples // batch_size):
-            out = sess.run(output, feed_dict={
-                context: [context_tokens for _ in range(batch_size)]
-            })[:, len(context_tokens):]
-            for i in range(batch_size):
-                generated += 1
-                text = enc.decode(out[i])
-                if debug == True:
-                    print("==========")
-                    print("Raw output: " + text)
-                    print("==========")
-                if mode == True:
-                    splitted = text.splitlines()[0]
-                else:
-                    splitted = text
-                encodedstr = splitted.encode(encoding=sys.stdout.encoding,errors='ignore')
-                decodedstr = encodedstr.decode("utf-8")
-                final = str(decodedstr)
-                # disable any regex on finishsentence mode.
-                if mode == True:
-                    # Final regex
-                    sanitized = regex(final)
-                    finalsan = final
-                else:
-                    finalsan = final                
-                if learn == True:
-                    learning = raw_text + finalsan + " "
-                update.message.reply_text(finalsan)
-                if debug == True:
-                    modes = str(mode)
-                    print("Chatbot mode: " + modes)
-                    learns = str(learn)
-                    print("Learning mode: " + learns)
-                    lengths = str(length)
-                    print("Length: " + lengths)
-                    print("==========")
-                    splits = str(splitted)
-                    print("Before regex: " + splits)
-                    print("==========")
-                    print("Output: " + finalsan)
-                    print("==========")
-                    print("Raw_text or Original: " + raw_text)
-                    print("==========")
-                    print("Learning text or Next: " + learning)
-                    print("==========")
-                    tps = str(top_p)
-                    print("Final top_p: " + tps)
-                    print("==========")
-                    print("top_p in: " + tpstring)
-                    print("==========")
+        out = sess.run(output, feed_dict={
+            context: [context_tokens for _ in range(batch_size)]
+        })[:, len(context_tokens):]
+        for i in range(batch_size):
+            generated += 1
+            text = enc.decode(out[i])
+            if debug == True:
+                print("==========")
+                print("Raw output: " + text)
+                print("==========")
+
+            splitted = text.splitlines()[0]
+            turns.append(splitted + '\n')  # Append the bot's response to the turns list
+            encodedstr = splitted.encode(encoding=sys.stdout.encoding,errors='ignore')
+            decodedstr = encodedstr.decode("utf-8")
+            final = str(decodedstr)
+            sanitized = regex(final)
+            finalsan = final
+            if learn == True:
+                learning = raw_text + finalsan + " "
+            update.message.reply_text(finalsan)
+            if debug == True:
+                modes = str(mode)
+                print("Chatbot mode: " + modes)
+                learns = str(learn)
+                print("Learning mode: " + learns)
+                lengths = str(length)
+                print("Length: " + lengths)
+                print("==========")
+                splits = str(splitted)
+                print("Before regex: " + splits)
+                print("==========")
+                print("Output: " + finalsan)
+                print("==========")
+                print("Raw_text or Original: " + raw_text)
+                print("==========")
+                print("Learning text or Next: " + learning)
+                print("==========")
+                tps = str(top_p)
+                print("Final top_p: " + tps)
+                print("==========")
+                print("top_p in: " + tpstring)
+                print("==========")
     sess.close()
 
 def error(bot, update):
