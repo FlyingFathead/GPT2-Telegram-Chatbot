@@ -8,6 +8,10 @@ import tensorflow as tf
 import re
 import os
 
+# prefixes; change if and when required by your implementation
+input_prefix = "|kysymys|"
+output_prefix = "|vastaus|"
+
 # Check if the token file exists
 if not os.path.isfile('bot_token.txt'):
     print("Error: token.txt file doesn't exist. Please create the file and add your token.")
@@ -26,13 +30,13 @@ logger = logging.getLogger(__name__)
 debug = True
 
 # Session timeout in seconds
-timeout = 2000
+timeout = 3600
 
 # top_p (refer to gpt-2 documentation)
 top = 0.77
 
 # Temperature (refer to gpt-2 documentation)
-degree = 1.0
+degree = 1.1
 
 # Top_p multiplier - add to top_p per word 
 # 0.00375 - may be shorter
@@ -313,15 +317,15 @@ def learnreset(bot, update):
 
 def regex(mew):
     meow = mew
-    if "|vastaus|" in meow:
-        meow = meow[0:meow.find('|vastaus|')]
-        if "|kysymys|" in meow:
-            meow = meow[0:meow.find('|kysymys|')]
+    if output_prefix in meow:
+        meow = meow[0:meow.find(output_prefix)]
+        if input_prefix in meow:
+            meow = meow[0:meow.find(input_prefix)]
         return meow
-    if "|kysymys|" in meow:
-        meow = meow[0:meow.find('|kysymys|')]
-        if "|vastaus|" in meow:
-            meow = meow[0:meow.find('|vastaus|')]
+    if input_prefix in meow:
+        meow = meow[0:meow.find(input_prefix)]
+        if output_prefix in meow:
+            meow = meow[0:meow.find(output_prefix)]
         return meow
     if "?" in meow:
         meow = meow[0:meow.find('?')]
@@ -389,7 +393,7 @@ def reduce_to_fit(tokens, max_tokens, enc):
 
     while len(tokens) > max_tokens:
         try:
-            second_question_index = tokens.index(enc.encode('|kysymys|')[0], len(enc.encode('|kysymys|')))
+            second_question_index = tokens.index(enc.encode(input_prefix)[0], len(enc.encode(input_prefix)))
         except ValueError:
             print("Cannot reduce the text further!")
             break
@@ -418,7 +422,7 @@ def interact_model(bot, update, new):
             turns = []
 
         # Check total token count of the history plus the new user input
-        potential_context = ''.join(turns) + '|kysymys|' + tex + '\n|vastaus|'
+        potential_context = ''.join(turns) + input_prefix + tex + '\n' + output_prefix
         total_tokens = len(enc.encode(potential_context))
 
         # If too many tokens, remove turns from the start
@@ -427,11 +431,11 @@ def interact_model(bot, update, new):
                 print("Cannot reduce the text further!")
                 return
             turns.pop(0)
-            potential_context = ''.join(turns) + '|kysymys|' + tex + '\n|vastaus|'
+            potential_context = ''.join(turns) + input_prefix + tex + '\n' + output_prefix
             total_tokens = len(enc.encode(potential_context))
 
         # Add the user's input to the context after it's guaranteed to fit
-        turns.append('|kysymys|' + tex + '\n|vastaus|')
+        turns.append(input_prefix + tex + '\n' + output_prefix)
         raw_text = potential_context
         context_tokens = enc.encode(raw_text)
         length = 300  # Set the default length
