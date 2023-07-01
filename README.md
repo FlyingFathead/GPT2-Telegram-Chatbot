@@ -8,7 +8,7 @@ You will also likely need to customize the chat prefix, the chat suffix and othe
 Currently, this runs on a newer `python-telegram-bot` version (v13.14) + you can use the latest TensorFlow 2.x instead of TF1 for this.
 
 1.Jul 2023: **Context memory trimmer "fixed"**
--- **the yeay's**
+-- **the yay's**
 - Finally redid the context memory auto trimmer for seamless sessions without the need for manual resets.
 - Every now and then, the user might still need manual reset with `/reset` if and when things go out of bounds
 
