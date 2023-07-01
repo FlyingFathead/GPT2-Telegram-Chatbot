@@ -15,7 +15,7 @@ output_prefix = "|vastaus|"
 
 # Check if the token file exists
 if not os.path.isfile('bot_token.txt'):
-    print("Error: token.txt file doesn't exist. Please create the file and add your token.")
+    print("Error: bot_token.txt file doesn't exist. Please create the file and add your token.")
     exit()
 
 # Read the bot_token from the file
