@@ -7,6 +7,7 @@ import numpy as np
 import tensorflow as tf
 import re
 import os
+import random
 
 # prefixes; change if and when required by your implementation
 input_prefix = "|kysymys|"
@@ -65,6 +66,10 @@ tpstring = str(top)
 # turns
 global turns
 turns = []
+
+# min and max number of answers (for multi-answer rng)
+min_num_answers = 1
+max_num_answers = 1
 
 # tekstit
 txt_settings_prefix = "[Asetukset/logiikka: "
@@ -415,9 +420,11 @@ def interact_model(bot, update, new):
     global cache
     global turns  # Keep track of conversation turns
 
+    num_answers = random.randint(min_num_answers, max_num_answers)  # Randomize the number of answers
+
     enc = encoder.get_encoder(model_name, models_dir)
 
-    if mode == True:
+    if mode:
         if new:  # If this is a new conversation, reset the list of turns
             turns = []
 
@@ -480,49 +487,52 @@ def interact_model(bot, update, new):
         saver.restore(sess, ckpt)
 
         generated = 0
-        out = sess.run(output, feed_dict={
-            context: [context_tokens for _ in range(batch_size)]
-        })[:, len(context_tokens):]
-        for i in range(batch_size):
-            generated += 1
-            text = enc.decode(out[i])
-            if debug == True:
-                print("==========")
-                print("Raw output: " + text)
-                print("==========")
+        while generated < num_answers:
+            out = sess.run(output, feed_dict={
+                context: [context_tokens for _ in range(batch_size)]
+            })[:, len(context_tokens):]
+            
+            for i in range(batch_size):
+                generated += 1
+                text = enc.decode(out[i])
+                if debug:
+                    print("==========")
+                    print("Raw output: " + text)
+                    print("==========")
 
-            splitted = text.splitlines()[0]
-            turns.append(splitted + '\n')  # Append the bot's response to the turns list
-            encodedstr = splitted.encode(encoding=sys.stdout.encoding,errors='ignore')
-            decodedstr = encodedstr.decode("utf-8")
-            final = str(decodedstr)
-            sanitized = regex(final)
-            finalsan = final
-            if learn == True:
-                learning = raw_text + finalsan + " "
-            update.message.reply_text(finalsan)
-            if debug == True:
-                modes = str(mode)
-                print("Chatbot mode: " + modes)
-                learns = str(learn)
-                print("Learning mode: " + learns)
-                lengths = str(length)
-                print("Length: " + lengths)
-                print("==========")
-                splits = str(splitted)
-                print("Before regex: " + splits)
-                print("==========")
-                print("Output: " + finalsan)
-                print("==========")
-                print("Raw_text or Original: " + raw_text)
-                print("==========")
-                print("Learning text or Next: " + learning)
-                print("==========")
-                tps = str(top_p)
-                print("Final top_p: " + tps)
-                print("==========")
-                print("top_p in: " + tpstring)
-                print("==========")
+                splitted = text.splitlines()[0]
+                turns.append(splitted + '\n')  # Append the bot's response to the turns list
+                encodedstr = splitted.encode(encoding=sys.stdout.encoding, errors='ignore')
+                decodedstr = encodedstr.decode("utf-8")
+                final = str(decodedstr)
+                sanitized = regex(final)
+                finalsan = final
+                if learn:
+                    learning = raw_text + finalsan + " "
+                update.message.reply_text(finalsan)
+                if debug:
+                    modes = str(mode)
+                    print("Chatbot mode: " + modes)
+                    learns = str(learn)
+                    print("Learning mode: " + learns)
+                    lengths = str(length)
+                    print("Length: " + lengths)
+                    print("==========")
+                    splits = str(splitted)
+                    print("Before regex: " + splits)
+                    print("==========")
+                    print("Output: " + finalsan)
+                    print("==========")
+                    print("Raw_text or Original: " + raw_text)
+                    print("==========")
+                    print("Learning text or Next: " + learning)
+                    print("==========")
+                    tps = str(top_p)
+                    print("Final top_p: " + tps)
+                    print("==========")
+                    print("top_p in: " + tpstring)
+                    print("==========")
+
     sess.close()
 
 def error(bot, update):
