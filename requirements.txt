@@ -1,5 +1,7 @@
 tqdm
 regex
-python-telegram-bot==13.14
+python-telegram-bot
 requests
 tensorflow-gpu
+jsonlib
+numpy
