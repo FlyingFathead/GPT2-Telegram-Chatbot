@@ -18,6 +18,8 @@ Currently, this runs on a newer `python-telegram-bot` version (v13.14) + you can
 
 Overall, this is mainly suitable for testbed purposes and not for production use, so to speak. Then again, when running just right, you can use it to audit your local model (i.e. during model training).
 
+Megathanks to ChaosWhisperer for code help on the memory trimming functionality.
+
 ---
 _(original README.md below)_
 ---
