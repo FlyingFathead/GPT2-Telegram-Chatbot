@@ -13,6 +13,10 @@ import random
 input_prefix = "|kysymys|"
 output_prefix = "|vastaus|"
 
+# reverse
+# output_prefix = "|kysymys|"
+# input_prefix = "|vastaus|"
+
 # Check if the token file exists
 if not os.path.isfile('bot_token.txt'):
     print("Error: bot_token.txt file doesn't exist. Please create the file and add your token.")
@@ -37,7 +41,7 @@ timeout = 3600
 top = 0.77
 
 # Temperature (refer to gpt-2 documentation)
-degree = 1.1
+degree = 1.0
 
 # Top_p multiplier - add to top_p per word 
 # 0.00375 - may be shorter
@@ -495,6 +499,9 @@ def interact_model(bot, update, new):
             for i in range(batch_size):
                 generated += 1
                 text = enc.decode(out[i])
+                # Split the generated text on newline characters and only keep the first part
+                text = text.split('\n')[0]
+                # Rest of the code                
                 if debug:
                     print("==========")
                     print("Raw output: " + text)
