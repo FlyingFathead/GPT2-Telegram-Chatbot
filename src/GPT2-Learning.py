@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+# (forked from github.com/xwarfare/GPT2-Telegram-Chatbot/ | fork by FlyingFathead & ChaosWhisperer)
 
 from telegram.ext import Updater, CommandHandler, MessageHandler, Filters
 import json, os, string, sys, threading, random, model, sample, encoder, logging, time
@@ -9,13 +10,23 @@ import re
 import os
 import random
 
-# prefixes; change if and when required by your implementation
-input_prefix = "|kysymys|"
-output_prefix = "|vastaus|"
+# >> examp. prefixes; change if and when required by your implementation
+# input_prefix = "|kysymys|"
+# output_prefix = "|vastaus|"
 
-# reverse
+# >> reverse
 # output_prefix = "|kysymys|"
 # input_prefix = "|vastaus|"
+
+input_prefix = "|k| "
+output_prefix = "|v| "
+
+# >> reverse
+# input_prefix = "|v| "
+# output_prefix = "|k| "
+
+# Starting context; to prime the model better for dialogue
+starting_context = "<|dialogi|>\n"
 
 # Check if the token file exists
 if not os.path.isfile('bot_token.txt'):
@@ -38,6 +49,7 @@ debug = True
 timeout = 3600
 
 # top_p (refer to gpt-2 documentation)
+# top = 0.77
 top = 0.77
 
 # Temperature (refer to gpt-2 documentation)
@@ -295,20 +307,12 @@ def learnreset(bot, update):
     global tim
     global learning
     global cache
+    global turns  # Add this line to access the global turns list
     if user == "":
         user = update.message.from_user.id
-        mode = True
-        learn = True
-        learning = ""
-        cache = ""
-        if mode == True and learn == True:
-            update.message.reply_text(txt_settings_prefix + tpstring + txt_info_temp + temps + txt_info_mode_one)
-        if mode == True and learn == False:
-            update.message.reply_text(txt_settings_prefix + tpstring + txt_info_temp + temps + txt_info_mode_two)
-        if mode == False:
-            update.message.reply_text(txt_settings_prefix + tpstring + txt_info_temp + temps + txt_info_mode_three)
-        return
     if user == update.message.from_user.id:
+        user = update.message.from_user.id
+        turns = []  # Clear the turns list
         mode = True
         learn = True
         learning = ""
@@ -323,6 +327,7 @@ def learnreset(bot, update):
     else:
         left = str(timeout)
         update.message.reply_text(txt_info_bot_busy + left + txt_info_secs_remaining)
+        running = False  # Add this line to set running to False after the timeout
 
 def regex(mew):
     meow = mew
@@ -371,6 +376,7 @@ def wait(bot, update, new):
     global learn
     global learning
     global cache
+    global turns  # Add this line to access the global turns list
     if user == "":
         user = update.message.from_user.id
     if user == update.message.from_user.id:
@@ -395,6 +401,9 @@ def wait(bot, update, new):
         left = str(60)
         update.message.reply_text(txt_info_bot_busy + left + ' sekuntia.')
 
+        # Add this line to set running to False after the timeout
+        running = False
+
 # helper to fit to 1024 token size
 def reduce_to_fit(tokens, max_tokens, enc):
     if len(tokens) <= max_tokens:
@@ -418,11 +427,16 @@ def interact_model(bot, update, new):
     topp = top
     models_dir = 'models'
     tex = str(update.message.text)
+
     global learning
     global learn
     global mode
     global cache
     global turns  # Keep track of conversation turns
+
+    # Add the starting context
+    if new:  # If this is a new conversation, reset the list of turns
+        turns = [starting_context]
 
     num_answers = random.randint(min_num_answers, max_num_answers)  # Randomize the number of answers
 
@@ -447,6 +461,7 @@ def interact_model(bot, update, new):
 
         # Add the user's input to the context after it's guaranteed to fit
         turns.append(input_prefix + tex + '\n' + output_prefix)
+
         raw_text = potential_context
         context_tokens = enc.encode(raw_text)
         length = 300  # Set the default length
@@ -542,6 +557,20 @@ def interact_model(bot, update, new):
 
     sess.close()
 
+# set temperature via msg
+def set_temperature(bot, update, args):
+    global temperature
+    try:
+        # args[0] should contain the new temperature as a string
+        new_temp = float(args[0])
+        if 0 <= new_temp <= 1.1:
+            temperature = new_temp
+            update.message.reply_text("Lämpötila on nyt: " + str(temperature))
+        else:
+            update.message.reply_text("Invalid temperature. Please provide a value between 0 and 1.1.")
+    except (IndexError, ValueError):
+        update.message.reply_text("Usage: /temp <value>")
+
 def error(bot, update):
     """Log Errors caused by Updates."""
     logger.warning('Update "%s" caused error "%s"', update)
@@ -577,6 +606,9 @@ def main():
     dp.add_handler(CommandHandler("eioppia", learnoff))    
     dp.add_handler(CommandHandler("nollaa", learnreset))
     dp.add_handler(CommandHandler("uusiks", retry))
+
+    # set the temperature
+    dp.add_handler(CommandHandler("temp", set_temperature, pass_args=True))
 
     # on noncommand i.e message - echo the message on Telegram
     dp.add_handler(MessageHandler(Filters.text, runn))
