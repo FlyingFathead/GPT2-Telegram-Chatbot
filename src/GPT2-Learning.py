@@ -308,6 +308,11 @@ def learnreset(bot, update):
     global learning
     global cache
     global turns  # Add this line to access the global turns list
+
+    turns = []  # Clear the turns list
+    learning = ""
+    cache = ""
+    
     if user == "":
         user = update.message.from_user.id
     if user == update.message.from_user.id:
