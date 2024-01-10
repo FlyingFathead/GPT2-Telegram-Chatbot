@@ -5,7 +5,9 @@ This is a fork from the original GPT-2 Telegram Chatbot from xwarfare (https://g
 Put your API token in the `src` directory under `token.txt`.
 You will also likely need to customize the chat prefix, the chat suffix and other elements of the chat handling yourself.
 
-Currently, this runs on a newer `python-telegram-bot` version (v13.14) + you can use the latest TensorFlow 2.x instead of TF1 for this.
+Currently, this runs on a newer `python-telegram-bot` version (v20.7) + you can use the latest TensorFlow 2.x instead of TF1 for this.
+
+## Changelog
 
 - v0.03 - 10 Jan 2023 - **the bot now uses `telegram-python-bot` library v20.7**
   - updated the bot to use the latest `telegram-python-bot` features and made it more asynchronous
