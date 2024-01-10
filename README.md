@@ -7,14 +7,17 @@ You will also likely need to customize the chat prefix, the chat suffix and othe
 
 Currently, this runs on a newer `python-telegram-bot` version (v13.14) + you can use the latest TensorFlow 2.x instead of TF1 for this.
 
-** 23. July 2023: **starting context, `/temp` temperature setting**
-- You can now write a starting context for the model for better dialogue priming, see the variable: `starting_context`.
-- model temperature can now be user-set with `/temp <temp>`, i.e. `/temp 0.9` for a temperature of 0.9
+- v0.03 - 10 Jan 2023 - **the bot now uses `telegram-python-bot` library v20.7**
+  - updated the bot to use the latest `telegram-python-bot` features and made it more asynchronous
 
-** 1. July 2023: **Context memory trimmer "fixed"**
+- v0.02 - 23 July 2023 - **starting context, `/temp` temperature setting**
+  - You can now write a starting context for the model for better dialogue priming, see the variable: `starting_context`.
+  - model temperature can now be user-set with `/temp <temp>`, i.e. `/temp 0.9` for a temperature of 0.9
+
+- v0.01 - 1 July 2023 - **Context memory trimmer "fixed"**
 -- **the yay's**
-- Finally redid the context memory auto trimmer for seamless sessions without the need for manual resets.
-- Every now and then, the user might still need manual reset with `/reset` if and when things go out of bounds
+  - Finally redid the context memory auto trimmer for seamless sessions without the need for manual resets.
+  - Every now and then, the user might still need manual reset with `/reset` if and when things go out of bounds
 
 **the meh's**
 - you can only have one user session at a time; hence the time limit per session
