@@ -1,14 +1,30 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# (forked from github.com/xwarfare/GPT2-Telegram-Chatbot/ | fork by FlyingFathead & ChaosWhisperer)
+#
+# fork by FlyingFathead w/ ChaosWhisperer
+# forked from: xwarfare/GPT2-Telegram-Chatbot/
+# this fork: https://github.com/FlyingFathead/GPT2-Telegram-Chatbot
+# this fork's version: v0.03 // Jan 10, 2023
+#
+# (uses `telegram-python-bot` version 20.7)
 
-from telegram.ext import Updater, CommandHandler, MessageHandler, Filters
+from telegram import Bot
+from telegram.ext import Application, CommandHandler, MessageHandler
+from telegram.ext.filters import TEXT
+import asyncio
+from asyncio import Queue
+
+# others
 import json, os, string, sys, threading, random, model, sample, encoder, logging, time
 import numpy as np
 import tensorflow as tf
 import re
 import os
 import random
+
+# (for multi-user mode) Initialize an empty dictionary for each user's context
+user_contexts = {}
+user_temperatures = {}
 
 # >> examp. prefixes; change if and when required by your implementation
 # input_prefix = "|kysymys|"
@@ -103,6 +119,23 @@ txt_info_reset_msg = 'Aikalaskuri on nollassa. Jos haluat aloittaa uuden istunno
 temp = ""
 # Define a few command handlers. These usually take the two arguments bot and
 # update. Error handlers also receive the raised TelegramError object in error.
+
+# updates in telegram's python bot library v.20 =>
+bot = Bot(token=bot_token)
+update_queue = Queue()
+
+# Define the /roleswap command handler
+def roleswap(bot, update):
+    
+    # Swap input_prefix and output_prefix.
+    global input_prefix
+    global output_prefix
+
+    # Swap the values of input_prefix and output_prefix
+    input_prefix, output_prefix = output_prefix, input_prefix
+
+    # Inform the user about the successful swap
+    update.message.reply_text("Roles swapped successfully!")
 
 def start(bot, update):
     """Send a message when the command /start is issued."""
@@ -300,6 +333,7 @@ def learnoff(bot, update):
 
 def learnreset(bot, update):
     """Send a message when the command /learnreset is issued."""
+        
     global running
     global mode
     global learn
@@ -312,7 +346,7 @@ def learnreset(bot, update):
     turns = []  # Clear the turns list
     learning = ""
     cache = ""
-    
+
     if user == "":
         user = update.message.from_user.id
     if user == update.message.from_user.id:
@@ -367,13 +401,15 @@ def retry(bot, update):
     comput = threading.Thread(target=wait, args=(bot, update, new,))
     comput.start()
 
-def runn(bot, update):
+def runn(update, context):
+    user_id = update.effective_user.id
+    message_text = update.message.text
     retr = False
     new = retr
-    comput = threading.Thread(target=wait, args=(bot, update, new,))
-    comput.start()
+    # Schedule the wait coroutine as a task in the asyncio event loop
+    asyncio.create_task(wait(context.bot, user_id, message_text, new))
 
-def wait(bot, update, new):
+async def wait(bot, user_id, message_text, new):
     global tim
     global user
     global running
@@ -381,33 +417,37 @@ def wait(bot, update, new):
     global learn
     global learning
     global cache
-    global turns  # Add this line to access the global turns list
+    global turns
+
+    # Call the asynchronous interact_model function with await
+    await interact_model(bot, user_id, message_text, new)
+
     if user == "":
-        user = update.message.from_user.id
-    if user == update.message.from_user.id:
-        user = update.message.from_user.id
+        user = user_id
+    if user == user_id:
+        user = user_id
         temp = timeout
-        compute = threading.Thread(target=interact_model, args=(bot, update, new,))
-        compute.start()
-        if running == False:
-            while temp > 1:
+        if not running:
+            while temp > 0:
                 running = True
-                time.sleep(1)
-                temp = temp - 1
-            if running == True:
+                await asyncio.sleep(1)  # Use asyncio.sleep instead of time.sleep
+                temp -= 1
+            if running:
                 mode = False
                 learn = False
                 learning = ""
                 cache = ""
                 user = ""
-                update.message.reply_text(txt_info_reset_msg)
+                # Send an asynchronous message with await
+                await bot.send_message(chat_id=user_id, text=txt_info_reset_msg)
                 running = False
     else:
-        left = str(60)
-        update.message.reply_text(txt_info_bot_busy + left + ' sekuntia.')
+        left = str(timeout - temp)
+        # Send an asynchronous message with await
+        await bot.send_message(chat_id=user_id, text=txt_info_bot_busy + left + ' sekuntia.')
 
-        # Add this line to set running to False after the timeout
-        running = False
+    # Set running to False after the timeout
+    running = False
 
 # helper to fit to 1024 token size
 def reduce_to_fit(tokens, max_tokens, enc):
@@ -423,7 +463,8 @@ def reduce_to_fit(tokens, max_tokens, enc):
         tokens = tokens[second_question_index:]
     return tokens
 
-def interact_model(bot, update, new):
+async def interact_model(bot, user_id, message_text, new):
+    # model details
     model_name = 'fenno'
     seed = random.randint(1431655765, 2863311530)
     nsamples = 1
@@ -431,7 +472,9 @@ def interact_model(bot, update, new):
     top_k = tok
     topp = top
     models_dir = 'models'
-    tex = str(update.message.text)
+    # tex = str(update.message.text)
+    # Use message_text instead of update.message.text    
+    tex = str(message_text)
 
     global learning
     global learn
@@ -536,7 +579,7 @@ def interact_model(bot, update, new):
                 finalsan = final
                 if learn:
                     learning = raw_text + finalsan + " "
-                update.message.reply_text(finalsan)
+                await bot.send_message(chat_id=user_id, text=finalsan)
                 if debug:
                     modes = str(mode)
                     print("Chatbot mode: " + modes)
@@ -563,7 +606,7 @@ def interact_model(bot, update, new):
     sess.close()
 
 # set temperature via msg
-def set_temperature(bot, update, args):
+def set_temperature(update, context):
     global temperature
     try:
         # args[0] should contain the new temperature as a string
@@ -576,55 +619,60 @@ def set_temperature(bot, update, args):
     except (IndexError, ValueError):
         update.message.reply_text("Usage: /temp <value>")
 
-def error(bot, update):
-    """Log Errors caused by Updates."""
-    logger.warning('Update "%s" caused error "%s"', update)
+# Error logging
+def error(update, context):
+    logger.warning('Update "%s" caused error "%s"', update, context.error)
 
+# Start the bot
 def main():
-    """Start the bot."""
-    # Create the Updater and pass it your bot's token.
-    # Make sure to set use_context=True to use the new context based callbacks
-    # Post version 12 this will no longer be necessary
+    # Ensure that bot_token is available
+    if not os.path.isfile('bot_token.txt'):
+        print("Error: bot_token.txt file doesn't exist. Please create the file and add your token.")
+        exit()
 
-    # update; use in TG api v12 => updater = Updater('TOKEN', use_context=True)
-    updater = Updater(bot_token, use_context=False)
-    # Get the dispatcher to register handlers
-    dp = updater.dispatcher
-    # on different commands - answer in Telegram
+    with open('bot_token.txt', 'r') as file:
+        bot_token = file.read().strip()
 
-# alkuperäiset komennot // original commands
-    dp.add_handler(CommandHandler("start", start))
-    dp.add_handler(CommandHandler("help", help))
-    dp.add_handler(CommandHandler("chatbot", chatbot))
-    dp.add_handler(CommandHandler("finish", finish))
-    dp.add_handler(CommandHandler("learnon", learnon))  
-    dp.add_handler(CommandHandler("learnoff", learnoff))    
-    dp.add_handler(CommandHandler("learnreset", learnreset))
-    dp.add_handler(CommandHandler("reset", learnreset))    
-    dp.add_handler(CommandHandler("retry", retry))
+    # Initialize logging
+    logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
+    logger = logging.getLogger(__name__)
 
-# suomi-komennot /// Finnish commands
-    dp.add_handler(CommandHandler("aloita", start))    
-    dp.add_handler(CommandHandler("apua", help))
-    dp.add_handler(CommandHandler("lopeta", finish))
-    dp.add_handler(CommandHandler("opi", learnon))  
-    dp.add_handler(CommandHandler("eioppia", learnoff))    
-    dp.add_handler(CommandHandler("nollaa", learnreset))
-    dp.add_handler(CommandHandler("uusiks", retry))
+    # Create an Application instance
+    application = Application.builder().token(bot_token).build()
+
+    # alkuperäiset komennot // original commands
+    application.add_handler(CommandHandler("start", start))
+    application.add_handler(CommandHandler("help", help))
+    application.add_handler(CommandHandler("chatbot", chatbot))
+    application.add_handler(CommandHandler("finish", finish))
+    application.add_handler(CommandHandler("learnon", learnon))  
+    application.add_handler(CommandHandler("learnoff", learnoff))    
+    application.add_handler(CommandHandler("learnreset", learnreset))
+    application.add_handler(CommandHandler("reset", learnreset))    
+    application.add_handler(CommandHandler("retry", retry))
+    application.add_handler(CommandHandler("roleswap", roleswap))
+
+    # suomi-komennot /// Finnish commands
+    application.add_handler(CommandHandler("aloita", start))    
+    application.add_handler(CommandHandler("apua", help))
+    application.add_handler(CommandHandler("lopeta", finish))
+    application.add_handler(CommandHandler("opi", learnon))  
+    application.add_handler(CommandHandler("eioppia", learnoff))    
+    application.add_handler(CommandHandler("nollaa", learnreset))
+    application.add_handler(CommandHandler("uusiks", retry))
+    application.add_handler(CommandHandler("rooli", roleswap))
 
     # set the temperature
-    dp.add_handler(CommandHandler("temp", set_temperature, pass_args=True))
+    application.add_handler(CommandHandler("temp", set_temperature))
 
     # on noncommand i.e message - echo the message on Telegram
-    dp.add_handler(MessageHandler(Filters.text, runn))
+    application.add_handler(MessageHandler(TEXT, runn))
+
     # log all errors
-    dp.add_error_handler(error)
-    # Start the Bot
-    updater.start_polling()
-    # Run the bot until you press Ctrl-C or the process receives SIGINT,
-    # SIGTERM or SIGABRT. This should be used most of the time, since
-    # start_polling() is non-blocking and will stop the bot gracefully.
-    updater.idle()
+    application.add_error_handler(error)
+
+    # Start the bot
+    application.run_polling()
 
 if __name__ == '__main__':
     main()
