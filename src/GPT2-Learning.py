@@ -4,7 +4,7 @@
 # fork by FlyingFathead w/ ChaosWhisperer
 # forked from: xwarfare/GPT2-Telegram-Chatbot/
 # this fork: https://github.com/FlyingFathead/GPT2-Telegram-Chatbot
-# this fork's version: v0.03 // Jan 10, 2023
+# this fork's version: v0.031 // Jan 10, 2023
 #
 # (uses `telegram-python-bot` version 20.7)
 
@@ -21,6 +21,7 @@ import tensorflow as tf
 import re
 import os
 import random
+import logging
 
 # (for multi-user mode) Initialize an empty dictionary for each user's context
 user_contexts = {}
@@ -566,9 +567,11 @@ async def interact_model(bot, user_id, message_text, new):
                 text = text.split('\n')[0]
                 # Rest of the code                
                 if debug:
-                    print("==========")
-                    print("Raw output: " + text)
-                    print("==========")
+                    logging.info(f"==========")
+                    logging.info(f"Raw output:")
+                    logging.info(f"==========")
+                    logging.info(text)
+                    logging.info(f"==========")
 
                 splitted = text.splitlines()[0]
                 turns.append(splitted + '\n')  # Append the bot's response to the turns list
@@ -582,26 +585,30 @@ async def interact_model(bot, user_id, message_text, new):
                 await bot.send_message(chat_id=user_id, text=finalsan)
                 if debug:
                     modes = str(mode)
-                    print("Chatbot mode: " + modes)
+                    logging.info(f"Chatbot mode: " + modes)
                     learns = str(learn)
-                    print("Learning mode: " + learns)
+                    logging.info(f"Learning mode: " + learns)
                     lengths = str(length)
-                    print("Length: " + lengths)
-                    print("==========")
+                    logging.info(f"Length: " + lengths)
+                    logging.info(f"==========")
                     splits = str(splitted)
-                    print("Before regex: " + splits)
-                    print("==========")
-                    print("Output: " + finalsan)
-                    print("==========")
-                    print("Raw_text or Original: " + raw_text)
-                    print("==========")
-                    print("Learning text or Next: " + learning)
-                    print("==========")
+                    logging.info(f"Before regex: " + splits)
+                    logging.info(f"==========")
+                    logging.info(f"Output: " + finalsan)
+                    logging.info(f"==========")
+                    logging.info(f"Raw_text or Original:")
+                    logging.info(f"==========")
+                    logging.info(raw_text)
+                    logging.info(f"==========")
+                    logging.info(f"Learning text or Next: ")
+                    logging.info(f"==========")
+                    logging.info(learning)
+                    logging.info(f"==========")
                     tps = str(top_p)
-                    print("Final top_p: " + tps)
-                    print("==========")
-                    print("top_p in: " + tpstring)
-                    print("==========")
+                    logging.info(f"Final top_p: " + tps)
+                    logging.info(f"==========")
+                    logging.info(f"top_p in: " + tpstring)
+                    logging.info(f"==========")
 
     sess.close()
 
