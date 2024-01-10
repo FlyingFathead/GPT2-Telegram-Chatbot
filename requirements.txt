@@ -1,7 +1,3 @@
-tqdm
-regex
-python-telegram-bot
-requests
-tensorflow-gpu
-jsonlib
-numpy
+python-telegram-bot==20.7
+numpy==1.24.4
+tensorflow==2.14.0
