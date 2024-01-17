@@ -9,7 +9,9 @@ Currently, this runs on a newer `python-telegram-bot` version (v20.7) + you can 
 
 ## Changelog
 
-- v0.03 - 10 Jan 2023 - **the bot now uses `telegram-python-bot` library v20.7**
+- `v0.032` - 17 Jan 2024 - `async` fixes
+
+- v0.03 - 10 Jan 2024 - **the bot now uses `telegram-python-bot` library v20.7**
   - updated the bot to use the latest `telegram-python-bot` features and made it more asynchronous
 
 - v0.02 - 23 July 2023 - **starting context, `/temp` temperature setting**
