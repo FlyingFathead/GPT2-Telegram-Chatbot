@@ -4,7 +4,7 @@
 # fork by FlyingFathead w/ ChaosWhisperer
 # forked from: xwarfare/GPT2-Telegram-Chatbot/
 # this fork: https://github.com/FlyingFathead/GPT2-Telegram-Chatbot
-# this fork's version: v0.031 // Jan 10, 2023
+# this fork's version: v0.032 // Jan 17, 2024
 #
 # (uses `telegram-python-bot` version 20.7)
 
@@ -125,8 +125,8 @@ temp = ""
 bot = Bot(token=bot_token)
 update_queue = Queue()
 
-# Define the /roleswap command handler
-def roleswap(bot, update):
+# `/roleswap` command handler
+async def roleswap(update, context):
     
     # Swap input_prefix and output_prefix.
     global input_prefix
@@ -136,9 +136,9 @@ def roleswap(bot, update):
     input_prefix, output_prefix = output_prefix, input_prefix
 
     # Inform the user about the successful swap
-    update.message.reply_text("Roles swapped successfully!")
+    await update.message.reply_text("Roles swapped successfully!")
 
-def start(bot, update):
+async def start(update, context):
     """Send a message when the command /start is issued."""
     global running
     global mode
@@ -154,11 +154,11 @@ def start(bot, update):
         learning = ""
         cache = ""
         if mode == True and learn == True:
-            update.message.reply_text(txt_settings_prefix + tpstring + txt_info_temp + temps + txt_info_mode_one)
+            await update.message.reply_text(txt_settings_prefix + tpstring + txt_info_temp + temps + txt_info_mode_one)
         if mode == True and learn == False:
-            update.message.reply_text(txt_settings_prefix + tpstring + txt_info_temp + temps + txt_info_mode_two)
+            await update.message.reply_text(txt_settings_prefix + tpstring + txt_info_temp + temps + txt_info_mode_two)
         if mode == False:
-            update.message.reply_text(txt_settings_prefix + tpstring + txt_info_temp + temps + txt_info_mode_three)
+            await update.message.reply_text(txt_settings_prefix + tpstring + txt_info_temp + temps + txt_info_mode_three)
         return
     if user == update.message.from_user.id:
         mode = True
@@ -166,21 +166,21 @@ def start(bot, update):
         learning = ""
         cache = ""
         if mode == True and learn == True:
-            update.message.reply_text(txt_settings_prefix + tpstring + txt_info_temp + temps + txt_info_mode_one)
+            await update.message.reply_text(txt_settings_prefix + tpstring + txt_info_temp + temps + txt_info_mode_one)
         if mode == True and learn == False:
-            update.message.reply_text(txt_settings_prefix + tpstring + txt_info_temp + temps + txt_info_mode_two)
+            await update.message.reply_text(txt_settings_prefix + tpstring + txt_info_temp + temps + txt_info_mode_two)
         if mode == False:
-            update.message.reply_text(txt_settings_prefix + tpstring + txt_info_temp + temps + txt_info_mode_three)
+            await update.message.reply_text(txt_settings_prefix + tpstring + txt_info_temp + temps + txt_info_mode_three)
         return
     else:
         left = str(timeout)
-        update.message.reply_text(txt_info_bot_busy + left + txt_info_secs_remaining)
+        await update.message.reply_text(txt_info_bot_busy + left + txt_info_secs_remaining)
 
-def help(bot, update):
+async def help(update, context):
     """Send a message when the command /help is issued."""
-    update.message.reply_text('Kirjoita vaan viestis. /reset tyhjentää koko höskän.')
+    await update.message.reply_text('Kirjoita vaan viestis. /reset tyhjentää koko höskän.')
 
-def chatbot(bot, update):
+async def chatbot(update, context):
     """Send a message when the command /chatbot is issued."""
     global running
     global mode
@@ -196,11 +196,11 @@ def chatbot(bot, update):
         learning = ""
         cache = ""
         if mode == True and learn == True:
-            update.message.reply_text(txt_settings_prefix + tpstring + txt_info_temp + temps + txt_info_mode_one)
+            await update.message.reply_text(txt_settings_prefix + tpstring + txt_info_temp + temps + txt_info_mode_one)
         if mode == True and learn == False:
-            update.message.reply_text(txt_settings_prefix + tpstring + txt_info_temp + temps + txt_info_mode_two)
+            await update.message.reply_text(txt_settings_prefix + tpstring + txt_info_temp + temps + txt_info_mode_two)
         if mode == False:
-            update.message.reply_text(txt_settings_prefix + tpstring + txt_info_temp + temps + txt_info_mode_three)
+            await update.message.reply_text(txt_settings_prefix + tpstring + txt_info_temp + temps + txt_info_mode_three)
         return
     if user == update.message.from_user.id:
         mode = True
@@ -208,17 +208,17 @@ def chatbot(bot, update):
         learning = ""
         cache = ""
         if mode == True and learn == True:
-            update.message.reply_text(txt_settings_prefix + tpstring + txt_info_temp + temps + txt_info_mode_one)
+            await update.message.reply_text(txt_settings_prefix + tpstring + txt_info_temp + temps + txt_info_mode_one)
         if mode == True and learn == False:
-            update.message.reply_text(txt_settings_prefix + tpstring + txt_info_temp + temps + txt_info_mode_two)
+            await update.message.reply_text(txt_settings_prefix + tpstring + txt_info_temp + temps + txt_info_mode_two)
         if mode == False:
-            update.message.reply_text(txt_settings_prefix + tpstring + txt_info_temp + temps + txt_info_mode_three)
+            await update.message.reply_text(txt_settings_prefix + tpstring + txt_info_temp + temps + txt_info_mode_three)
         return
     else:
         left = str(timeout)
-        update.message.reply_text(txt_info_bot_busy + left + txt_info_secs_remaining)
+        await update.message.reply_text(txt_info_bot_busy + left + txt_info_secs_remaining)
 
-def finish(bot, update):
+async def finish(update, context):
     """Send a message when the command /finish is issued."""
     global running
     global mode
@@ -234,11 +234,11 @@ def finish(bot, update):
         learning = ""
         cache = ""
         if mode == True and learn == True:
-            update.message.reply_text(txt_settings_prefix + tpstring + txt_info_temp + temps + txt_info_mode_one)
+            await update.message.reply_text(txt_settings_prefix + tpstring + txt_info_temp + temps + txt_info_mode_one)
         if mode == True and learn == False:
-            update.message.reply_text(txt_settings_prefix + tpstring + txt_info_temp + temps + txt_info_mode_two)
+            await update.message.reply_text(txt_settings_prefix + tpstring + txt_info_temp + temps + txt_info_mode_two)
         if mode == False:
-            update.message.reply_text(txt_settings_prefix + tpstring + txt_info_temp + temps + txt_info_mode_three)
+            await update.message.reply_text(txt_settings_prefix + tpstring + txt_info_temp + temps + txt_info_mode_three)
         return
     if user == update.message.from_user.id:
         mode = False
@@ -246,17 +246,17 @@ def finish(bot, update):
         learning = ""
         cache = ""
         if mode == True and learn == True:
-            update.message.reply_text(txt_settings_prefix + tpstring + txt_info_temp + temps + txt_info_mode_one)
+            await update.message.reply_text(txt_settings_prefix + tpstring + txt_info_temp + temps + txt_info_mode_one)
         if mode == True and learn == False:
-            update.message.reply_text(txt_settings_prefix + tpstring + txt_info_temp + temps + txt_info_mode_two)
+            await update.message.reply_text(txt_settings_prefix + tpstring + txt_info_temp + temps + txt_info_mode_two)
         if mode == False:
-            update.message.reply_text(txt_settings_prefix + tpstring + txt_info_temp + temps + txt_info_mode_three)
+            await update.message.reply_text(txt_settings_prefix + tpstring + txt_info_temp + temps + txt_info_mode_three)
         return
     else:
         left = str(timeout)
-        update.message.reply_text(txt_info_bot_busy + left + txt_info_secs_remaining)
+        await update.message.reply_text(txt_info_bot_busy + left + txt_info_secs_remaining)
 
-def learnon(bot, update):
+async def learnon(update, context):
     """Send a message when the command /learnon is issued."""
     global running
     global mode
@@ -272,11 +272,11 @@ def learnon(bot, update):
         learning = ""
         cache = ""
         if mode == True and learn == True:
-            update.message.reply_text(txt_settings_prefix + tpstring + txt_info_temp + temps + txt_info_mode_one)
+            await update.message.reply_text(txt_settings_prefix + tpstring + txt_info_temp + temps + txt_info_mode_one)
         if mode == True and learn == False:
-            update.message.reply_text(txt_settings_prefix + tpstring + txt_info_temp + temps + txt_info_mode_two)
+            await update.message.reply_text(txt_settings_prefix + tpstring + txt_info_temp + temps + txt_info_mode_two)
         if mode == False:
-            update.message.reply_text(txt_settings_prefix + tpstring + txt_info_temp + temps + txt_info_mode_three)
+            await update.message.reply_text(txt_settings_prefix + tpstring + txt_info_temp + temps + txt_info_mode_three)
         return
     if user == update.message.from_user.id:
         mode = True
@@ -284,17 +284,17 @@ def learnon(bot, update):
         learning = ""
         cache = ""
         if mode == True and learn == True:
-            update.message.reply_text(txt_settings_prefix + tpstring + txt_info_temp + temps + txt_info_mode_one)
+            await update.message.reply_text(txt_settings_prefix + tpstring + txt_info_temp + temps + txt_info_mode_one)
         if mode == True and learn == False:
-            update.message.reply_text(txt_settings_prefix + tpstring + txt_info_temp + temps + txt_info_mode_two)
+            await update.message.reply_text(txt_settings_prefix + tpstring + txt_info_temp + temps + txt_info_mode_two)
         if mode == False:
-            update.message.reply_text(txt_settings_prefix + tpstring + txt_info_temp + temps + txt_info_mode_three)
+            await update.message.reply_text(txt_settings_prefix + tpstring + txt_info_temp + temps + txt_info_mode_three)
         return
     else:
         left = str(timeout)
-        update.message.reply_text(txt_info_bot_busy + left + txt_info_secs_remaining)
+        await update.message.reply_text(txt_info_bot_busy + left + txt_info_secs_remaining)
 
-def learnoff(bot, update):
+async def learnoff(update, context):
     """Send a message when the command /learnoff is issued."""
     global running
     global mode
@@ -310,11 +310,11 @@ def learnoff(bot, update):
         learning = ""
         cache = ""
         if mode == True and learn == True:
-            update.message.reply_text(txt_settings_prefix + tpstring + txt_info_temp + temps + txt_info_mode_one)
+            await update.message.reply_text(txt_settings_prefix + tpstring + txt_info_temp + temps + txt_info_mode_one)
         if mode == True and learn == False:
-            update.message.reply_text(txt_settings_prefix + tpstring + txt_info_temp + temps + txt_info_mode_two)
+            await update.message.reply_text(txt_settings_prefix + tpstring + txt_info_temp + temps + txt_info_mode_two)
         if mode == False:
-            update.message.reply_text(txt_settings_prefix + tpstring + txt_info_temp + temps + txt_info_mode_three)
+            await update.message.reply_text(txt_settings_prefix + tpstring + txt_info_temp + temps + txt_info_mode_three)
         return
     if user == update.message.from_user.id:
         mode = True
@@ -322,17 +322,17 @@ def learnoff(bot, update):
         learning = ""
         cache = ""
         if mode == True and learn == True:
-            update.message.reply_text(txt_settings_prefix + tpstring + txt_info_temp + temps + txt_info_mode_one)
+            await update.message.reply_text(txt_settings_prefix + tpstring + txt_info_temp + temps + txt_info_mode_one)
         if mode == True and learn == False:
-            update.message.reply_text(txt_settings_prefix + tpstring + txt_info_temp + temps + txt_info_mode_two)
+            await update.message.reply_text(txt_settings_prefix + tpstring + txt_info_temp + temps + txt_info_mode_two)
         if mode == False:
-            update.message.reply_text(txt_settings_prefix + tpstring + txt_info_temp + temps + txt_info_mode_three)
+            await update.message.reply_text(txt_settings_prefix + tpstring + txt_info_temp + temps + txt_info_mode_three)
         return
     else:
         left = str(timeout)
-        update.message.reply_text(txt_info_bot_busy + left + txt_info_secs_remaining)
+        await update.message.reply_text(txt_info_bot_busy + left + txt_info_secs_remaining)
 
-def learnreset(bot, update):
+async def learnreset(update, context):
     """Send a message when the command /learnreset is issued."""
         
     global running
@@ -358,15 +358,15 @@ def learnreset(bot, update):
         learning = ""
         cache = ""
         if mode == True and learn == True:
-            update.message.reply_text(txt_settings_prefix + tpstring + txt_info_temp + temps + txt_info_mode_one)
+            await update.message.reply_text(txt_settings_prefix + tpstring + txt_info_temp + temps + txt_info_mode_one)
         if mode == True and learn == False:
-            update.message.reply_text(txt_settings_prefix + tpstring + txt_info_temp + temps + txt_info_mode_two)
+            await update.message.reply_text(txt_settings_prefix + tpstring + txt_info_temp + temps + txt_info_mode_two)
         if mode == False:
-            update.message.reply_text(txt_settings_prefix + tpstring + txt_info_temp + temps + txt_info_mode_three)
+            await update.message.reply_text(txt_settings_prefix + tpstring + txt_info_temp + temps + txt_info_mode_three)
         return
     else:
         left = str(timeout)
-        update.message.reply_text(txt_info_bot_busy + left + txt_info_secs_remaining)
+        await update.message.reply_text(txt_info_bot_busy + left + txt_info_secs_remaining)
         running = False  # Add this line to set running to False after the timeout
 
 def regex(mew):
@@ -396,7 +396,7 @@ def regex(mew):
     meow = "Nyt tapahtui joku virhe."
     return meow
 
-def retry(bot, update):
+def retry(update, context):
     retr = True
     new = retr
     comput = threading.Thread(target=wait, args=(bot, update, new,))
@@ -613,21 +613,21 @@ async def interact_model(bot, user_id, message_text, new):
     sess.close()
 
 # set temperature via msg
-def set_temperature(update, context):
+async def set_temperature(update, context):
     global temperature
     try:
         # args[0] should contain the new temperature as a string
         new_temp = float(args[0])
         if 0 <= new_temp <= 1.1:
             temperature = new_temp
-            update.message.reply_text("Lämpötila on nyt: " + str(temperature))
+            await update.message.reply_text("Lämpötila on nyt: " + str(temperature))
         else:
-            update.message.reply_text("Invalid temperature. Please provide a value between 0 and 1.1.")
+            await update.message.reply_text("Invalid temperature. Please provide a value between 0 and 1.1.")
     except (IndexError, ValueError):
-        update.message.reply_text("Usage: /temp <value>")
+        await update.message.reply_text("Usage: /temp <value>")
 
 # Error logging
-def error(update, context):
+async def error(update, context):
     logger.warning('Update "%s" caused error "%s"', update, context.error)
 
 # Start the bot
