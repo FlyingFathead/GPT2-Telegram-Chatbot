@@ -4,7 +4,7 @@
 # fork by FlyingFathead w/ ChaosWhisperer
 # forked from: xwarfare/GPT2-Telegram-Chatbot/
 # this fork: https://github.com/FlyingFathead/GPT2-Telegram-Chatbot
-# this fork's version: v0.032 // Jan 17, 2024
+# this fork's version: v0.033 // Jan 17, 2024
 #
 # (uses `telegram-python-bot` version 20.7)
 
@@ -617,12 +617,13 @@ async def set_temperature(update, context):
     global temperature
     try:
         # args[0] should contain the new temperature as a string
-        new_temp = float(args[0])
-        if 0 <= new_temp <= 1.1:
+        # Extract the first argument from context.args
+        new_temp = float(context.args[0])
+        if 0 <= new_temp <= 2.0:
             temperature = new_temp
             await update.message.reply_text("Lämpötila on nyt: " + str(temperature))
         else:
-            await update.message.reply_text("Invalid temperature. Please provide a value between 0 and 1.1.")
+            await update.message.reply_text("Invalid temperature. Please provide a value between 0 and 2.0.")
     except (IndexError, ValueError):
         await update.message.reply_text("Usage: /temp <value>")
 
